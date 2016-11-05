@@ -71,7 +71,7 @@ typedef enum {
 /*------- TREE -------*/
 struct nodeTag {
 	NodeType nodeType;
-	string* value;
+	char* value;
 	struct nodeTag *link1;
 	struct nodeTag *link2;
 } Node;
