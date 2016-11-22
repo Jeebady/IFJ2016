@@ -1,32 +1,31 @@
-<root>       	-->     <class><mclass>
-<class>		-->	class ID{<svar><functions>}
-<mclass>	-->	<class><mclass>
-<functions>	-->	<function><mfunction>
-<function> 	-->	static <rettype> ID<funtctbody>
-<mfunction>     -->     empty | <function> <mfunction>
-<funtctbody>    -->     (<fvar>){<block>}
-<fvar>		-->	empty | <type> ID | <type> ID, <fvar>
-<rvar>          -->     empty | <expr>, <rvar>
-<svar>		-->	empty | static <var>; <svar>
-<var>		-->	<type> ID || <type> ID = <expr>
+<root>       	--> <class><mclass>
+<class>			-->	class ID{<svar><functions>}
+<mclass>		-->	<class> | <class><mclass>
+<functions>		-->	<function><mfunction>
+<function> 		-->	static <rettype> ID<funtctbody>
+<mfunction>     --> empty | <function> <mfunction>
+<funtctbody>    --> (<fvar>){<block>}
+<var>			-->	<type> ID || <type> ID = <expr>
 <type> 	        -->	int | string | double | boolean
-<rettype>	-->	void | int | string | double | boolean
-<block> 	-->	<stat> <mstats>
-<mstats>	-->	empty | <stat> <mstats>
-<stat>		-->	<if> | <while> | <do> | <for> | ID = <expr>; | ID(<rvar>); | return <expr>; | <type> ID; | <type> ID =<expr>;
-<if>		-->	if (<conds>) <ifexec>
-<ifexec>	-->	{<block>} <mifexec>
-<mifexec>	-->	empty | else {<block>} <mifexec>
-<conds>		-->	<cond> | <cond> || <conds> | <cond> && <conds> | (<conds>) | !<conds>
-<cond>		-->	<expr> == <expr> | <expr> != <expr> | <expr> < <expr> | <expr> > <expr> | <expr> =< <expr> | <expr> => <expr>
-<expr>		-->	<AS> * <expr> | <AS> / <expr> | (<expr>) | <AS>
-<AS>		-->	<S> + <AS> | <S> - <AS> | <S>
-<S>		-->	- <S> | <V>
-<V>		-->	(<expr>) | ID | value | ID(<rvar>) | true | false
-
-<while>		-->	while (<conds>) {<block>}
-<do>		-->	do{<block>} while (<conds>)
-<for>		-->	for (<for1><for2>
-<for1>          -->     <forvar>;<cond>;
-<for2>          -->     <expr>) {<block>}
-<forvar> 	-->	static <type> ID; | static <type> ID = <expr>;
+<rettype>		-->	void | int | string | double | boolean
+<block> 		-->	<stat> <mstats>
+<mstats>		-->	empty | <stat> <mstats>
+<stat>			-->	<if> | <while> | <do> | <for> | ID = <expr>; | ID(<rvar>); | return <expr>; | <type> ID; | <type> ID =<expr>;
+<fvar>			-->	empty | <type> ID | <type> ID, <fvar>
+<rvar>          --> empty | <expr>, <rvar>
+<svar>			-->	empty | static <var>; <svar>
+<if>			-->	if (<conds>) <ifexec>
+<ifexec>		-->	{<block>} <mifexec>
+<mifexec>		-->	empty | else {<block>} <mifexec>
+<conds>			-->	<cond> | <cond> || <conds> | <cond> && <conds> | (<conds>) | !<conds>
+<cond>			-->	<expr> == <expr> | <expr> != <expr> | <expr> < <expr> | <expr> > <expr> | <expr> =< <expr> | <expr> => <expr>
+<expr>			-->	<AS> * <expr> | <AS> / <expr> | (<expr>) | <AS>
+<AS>			-->	<S> + <AS> | <S> - <AS> | <S>
+<S>				-->	- <S> | <V>
+<V>				-->	(<expr>) | ID | value | ID(<rvar>) | true | false
+<while>			-->	while (<conds>) {<block>}
+<do>			-->	do{<block>} while (<conds>)
+<for>			-->	for (<for1><for2>
+<for1>     		--> <forvar>;<cond>;
+<for2>      	--> <expr>) {<block>}
+<forvar> 		-->	static <type> ID; | static <type> ID = <expr>;

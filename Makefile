@@ -4,7 +4,7 @@
 # Author: xandri03
 # Last edit: 15/10/16
 
-CC=gcc
+CC=gcc-4.9
 CFLAGS= -std=c99 -Wall -Wextra -pedantic
 LDFLAGS=
 SOURCES= scanner.c parser.c test.c

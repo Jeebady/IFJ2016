@@ -8,826 +8,784 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "scanner.h"
 #include "parser.h"
-#include "string.h"
+#include <string.h>
 
-Token *tk;
+ /*
+	 Function declarations,
+	 functions called for each link in a node
+	 to create a tree.
+ */
+
 Node *root;
 Node * getNode(NodeType);
-Node * root();
-Node * class();
-Node * mclass();
-Node * functions();
-Node * function();
-Node * mfunction();
-Node * functbody();
-Node * fvar();
-Node * rvar();
-Node * svar();
-Node * var();
-Node * type();
-Node * rettype();
-Node * block();
-Node * stat();
-Node * mstats();
-Node * iff();
-Node * ifexec();
-Node * mifexec();
-Node * conds();
-Node * cond();
-Node * expr();
-Node * as();
-Node * s();
-Node * v();
-Node * whilef();
-Node * dof();
-Node * forf();
-Node * for1();
-Node * for2();
-Node * forvar();
+Node * rootN(FILE *stream);
+Node * classN(FILE *stream);
+Node * mclassN(FILE *stream);
+Node * functionsN(FILE *stream);
+Node * functionN(FILE *stream);
+Node * mfunctionN(FILE *stream);
+Node * functbodyN(FILE *stream);
+Node * fvarN(FILE *stream);
+Node * rvarN(FILE *stream);
+Node * svarN(FILE *stream);
+Node * varN(FILE *stream);
+Node * typeN(FILE *stream);
+Node * rettypeN(FILE *stream);
+Node * blockN(FILE *stream);
+Node * statN(FILE *stream);
+Node * ifN(FILE *stream);
+Node * ifexecN(FILE *stream);
+Node * mifexecN(FILE *stream);
+Node * condsN(FILE *stream);
+Node * condN(FILE *stream);
+Node * exprN(FILE *stream);
+Node * asN(FILE *stream);
+Node * sN(FILE *stream);
+Node * vN(FILE *stream);
+Node * whileN(FILE *stream);
+Node * doN(FILE *stream);
+Node * forN(FILE *stream);
+Node * for1N(FILE *stream);
+Node * for2N(FILE *stream);
+Node * forvarN(FILE *stream);
 
-token_type getTokenType(Token *tok)
-{
-    return tok->type;
-}
+/*	Global variable declarations	*/
+Token tk;
 
-void str(char* strd, char stro[]){
-	strd = malloc(strlen(stro)+1);
-	strcpy(strd, stro);
-}
-
-Node *parser(char* file) {
-    loadSourceFile(file);
-    tk = getNextToken();
-    root = program();
-    if (getTokenType(tk) == END_OF_FILE){
-        printf("Parse OK! \n");
-        closeSourceFile();
-        destroyToken(tk);
-    }
-    else {
-        exit(2);
-    }
-    return root;
+/*
+	Initial entry into parser
+	Takes
+*/
+Node *parser(FILE *stream) {
+	assert(stream);
+	root = rootN(stream);
+	if (tk.type == EOF) {
+		closeSourceFile();
+		return root;
+	}
+	else {
+		end(2);
+	}
 }
 
 Node *getNode(NodeType nodeType) {
 	Node *node;
-	node = (Node *) malloc(sizeof(Node));
-	node->nodeType = nodeType;
-	node->link1 = node->link2 = NULL;
-	return node;
+	node = (Node *)malloc(sizeof(Node));
+	if (node) {
+		node->nodeType = nodeType;
+		node->link1 = node->link2 = node->value = NULL;
+		return node;
+	}
+	else end(99);
 }
 
 void removeNode(Node *node)
 {
-    if(node != NULL){
-        if(node->value != NULL) free(node->value);
-        free(node);
-    }
+	if (node != NULL) {
+		if (node->value != NULL) free(node->value);
+		free(node);
+	}
 }
 
 void disposeTree(Node *node)
 {
-    if (node != NULL) 
+	if (node != NULL)
 	{
-    	if(node->link1 != NULL)
-			disposeTree(node->link1);
-		if(node->link2 != NULL)
-            disposeTree(node->link2);
-		if((node->link2 == NULL) && (node->link1 == NULL))
-            removeNode(node);
-    }	
-}
-
-Node * program(){
-    Node *node = getNode(programNode);
-	node->link1 = class();
-    node->link2 = mfunction();
-    return node;
-}
-
-Node * function(){
-    Node *node = getNode(functionNode);
-    //Function return type
-	node->link1 = rettype();
-    //Function ID check - save in value
-    if (getTokenType(tk) == ID || MAIN) {
-		node->value = tk->attr;
-		destroyToken(tk); tk = getNextToken();
-        node->link2 = functbody();
-        return node;
-	} else {
-		exit(2);
+		if (node->link1 != NULL) {
+			disposeTree(node->link2);
+			node->link1 = NULL;
+		}
+		if (node->link2 != NULL) {
+			disposeTree(node->link2);
+			node->link1 != NULL;
+		}
+		if ((node->link2 == NULL) && (node->link1 == NULL))
+			removeNode(node);
 	}
 }
 
-Node * functbody(){
-    Node *node = getNode(functbodyNode);
-    //Function Bracket after varaibles check
-    if (getTokenType(tk) == LEFT_BRACKET) {
-        node->link1 = fvar();
-        if (getTokenType(tk) == RIGHT_BRACKET) {
-        //Check if full function definiton
-            destroyToken(tk); tk = getNextToken();
-            if (getTokenType(tk) == LEFT_CURLY_BRACKET) 
-            {
-                destroyToken(tk); tk = getNextToken();
-                node->link1 = block();
-                //End Brace Check
-                if (getTokenType(tk) == RIGHT_CURLY_BRACKET) {
-                    destroyToken(tk); tk = getNextToken();
-                    //Function syntax correct - return
-                    return node;
-                } else {
-                    exit(2);
-                }
-            }
-        // Or only pre def
-        else if(getTokenType(tk) == SEMICLN) {
-            return node;
-        } else exit(2);
-    } else exit(2);
-    } else exit(2);
+void end(int exitCode) {
+	disposeTree(root);
+	exit(exitCode);
 }
 
-Node * mfunction()
-{
-    Node *node = getNode(mfunctionNode);
-    switch(getTokenType(tk))
-    {
-    case STRING:
-        node->link1 = function();
-        node->link2 = mfunction();
-        break;
-    case INTEGER:
-        node->link1 = function();
-        node->link2 = mfunction();
-        break;
-    case DOUBLE:
-        node->link1 = function();
-        node->link2 = mfunction();
-        break;
-    default:
-        break;
-    }
-    return node;
+Node * rootN(FILE *stream) {
+	Node *node = getNode(rootNode);
+	tk = get_token(stream);
+	node->link1 = class(stream);
+	node->link2 = mclass(stream);
+	return node;
 }
 
-Node * type()
-{
-    Node *node = getNode(typeNode);
-    switch(getTokenType(tk)) {
-    case STRING  :
-        node->value->str = "STRING";
-        destroyToken(tk); tk = getNextToken();
-        return node;
-        break;
-    case DOUBLE  :
-        node->value->str = "DOUBLE";
-        destroyToken(tk); tk = getNextToken();
-        return node;
-        break;
-    case INTEGER:
-        node->value->str = "INT";
-        destroyToken(tk); tk = getNextToken();
-        return node;
-        break;
-    case AUTO:
-        node->value->str = "AUTO";
-        destroyToken(tk); tk = getNextToken();
-        return node;
-        break;
-    default : 
-        exit(2);
-    }
+Node * classN(FILE *stream) {
+	Node *node = getNode(classNode);
+	if (tk.type == CLASS) {
+		if ((tk = get_token(stream)).type == IDENTIFIER)
+		{
+			node->value = tk.tag;
+			if ((tk = get_token(stream)).type == LEFT_BRACE) {
+				node->link1 = svarN(stream);
+				node->link2 = functionsN(stream);
+				return node;
+			}
+		}
+		else end(2);
+	}
+	else end(2);
 }
 
-Node * rettype()
-{
-    Node *node = getNode(rettypeNode);
-    switch(getTokenType(tk)) {
-        case STRING  :
-            node->value->str = "STRING";
-            destroyToken(tk); tk = getNextToken();
-            return node;
-            break;
-        case INTEGER  :
-            node->value->str = "INT";
-            destroyToken(tk); tk = getNextToken();
-            return node;
-            break;
-        case DOUBLE :
-            node->value->str = "DOUBLE";
-            destroyToken(tk); tk = getNextToken();
-            return node;
-            break;
-        default : 
-            printf("exit");
-            exit(2);
-    }
+Node * mclassN(FILE *stream) {
+	if (tk.type != EOF) {
+		Node *node = getNode(mclassNode);
+		node->link1 = classN(stream);
+		node->link2 = mclassN(stream);
+		return node;
+	}
 }
 
-Node * block()
-{
-    Node *node = getNode(blockNode);
-    node->link1 = var();
-    node->link2 = stats();
-    return node;
+Node * svarN(FILE *stream) {
+	Node *node;
+	if ((tk = get_token(stream)).type == STATIC) {
+		node = getNode(svarNode);
+		node->link1 = varN(stream);
+		if (tk.type == SEMICOLON) {
+			node->link2 = svarN(stream);
+			return node;
+		}
+		else end(2);
+	}
+	else return NULL;
 }
 
-Node * var()
-{
-    Node *node = getNode(varNode);
-    switch(getTokenType(tk)) {
-    case STRING  :
-        node->value->str = "STRING";
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = id();
-        destroyToken(tk); tk = getNextToken();
-        break;
-    case INTEGER  :
-        node->value->str = "INTEGER";
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = id();
-        destroyToken(tk); tk = getNextToken();
-        break;
-    case DOUBLE :
-        node->value->str = "DOUBLE";
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = id();
-        destroyToken(tk); tk = getNextToken();
-        break;
-    case AUTO :
-        node->value->str = "AUTO";
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = id();
-        destroyToken(tk); tk = getNextToken();
-        break;
-    default:
-        return node;
-    }
-    if(getTokenType(tk) == SEMICLN)
-    {
-        destroyToken(tk); tk = getNextToken();
-        node->link2 = var();
-        return node;
-    } else exit(2);
+Node * functionsN(FILE *stream) {
+	Node *node = getNode(functionsNode);
+	if ((tk = get_token(stream)).type == STATIC) {
+		node->link1 = functionN(stream);
+		node->link2 = mfunctionN(stream);
+		return node;
+	}
+	else end(2);
 }
 
-Node * assign()
-{
-    Node *node = getNode(assignNode);
-    if(getTokenType(tk) == ASSIGNMENT)
-    {
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = expr();
-    } else exit(2);
-    return node;
+Node * functionN(FILE *stream) {
+	if ((tk = get_token(stream)).type == STATIC) {
+		Node *node = getNode(functionNode);
+		node->link1 = rettypeN(stream);
+		if ((tk = get_token(stream)).type == IDENTIFIER) {
+			node->value = tk.tag;
+			node->link2 = functbodyN(stream);
+			return node;
+		}
+		else end(2);
+	}
 }
 
-Node * stats()
-{
-    Node *node = getNode(statsNode);
-    node->link1 = stat();
-    if (getTokenType(tk) == RIGHT_CURLY_BRACKET) {
-        return node;
-    } 
-    else
-    {
-        node->link2 = mstats();
-    }
-    return node;
+Node * mfunctionN(FILE *stream) {
+	if ((tk = get_token(stream)).type == STATIC) {
+		Node *node = getNode(mfunctionNode);
+		node->link1 = functionN(stream);
+		node->link2 = mfunctionN(stream);
+	}
+	else return NULL;
 }
 
-Node * mstats()
-{
-    Node *node = getNode(mstatsNode);
-    node->link1 = stat();
-    if (getTokenType(tk) == RIGHT_CURLY_BRACKET) {
-        return node;
-    } 
-    else
-    {
-        node->link2 = mstats();
-    }
-    return node;
+Node * functbodyN(FILE *stream) {
+	Node *node = getNode(functbodyNode);
+	//Function Bracket after varaibles check
+	if ((tk = get_token(stream)).type == LEFT_BRACKET) {
+		node->link1 = fvarN(stream);
+		if ((tk = get_token(stream)).type == RIGHT_BRACKET) {
+			if ((tk = get_token(stream)).type == LEFT_BRACE) {
+				node->link1 = blockN(stream);
+				//End Brace Check
+				if ((tk = get_token(stream)).type == RIGHT_BRACE) {
+					//Function syntax correct - return
+					return node;
+				}
+				else end(2);
+			}
+			else end(2);
+		}
+		else end(2);
+	}
+	else end(2);
 }
 
-Node * stat()
+Node * typeN(FILE *stream)
 {
-    Node *node = getNode(statNode);
-        switch(getTokenType(tk)) {
-        case CIN:
-            node->value->str = "CIN";
-            node->link1 = cinf();
-        break;
-        case COUT:
-            node->value->str = "COUT";
-            node->link1 = coutf();
-        break;
-        case IF:
-            node->value->str = "IF";
-            node->link1 = iff();
-        break;
-        case WHILE:
-            node->value->str = "WHILE";
-            node->link1 = whilef();
-        break;
-        case FOR:
-            node->value->str = "FOR";
-            node->link1 = forf();
-        break;
-        case ID:
-            node->value = tk->attr;
-            if(getTokenType(tk)==LEFT_BRACKET)
-            {
-                node->link1 = rvar();
-                if (getTokenType(tk) == RIGHT_BRACKET) {
-                    destroyToken(tk); tk = getNextToken();
-                } else {
-                    exit(2);
-                }
-            }
-            else
-            {
-                destroyToken(tk); tk = getNextToken();
-                node->link1 = assign();
-            }
-            if (getTokenType(tk) == SEMICLN) {
-                destroyToken(tk); tk = getNextToken();
-            } else {
-                exit(2);
-            }
-        break;
-        case RETURN:
-            node->value->str = "RETURN";
-            //Return expression
-            destroyToken(tk); tk = getNextToken();
-            node->link1 = expr();
-            //SEMICLN check
-            if (getTokenType(tk) == SEMICLN) {
-                destroyToken(tk); tk = getNextToken();
-            } else {
-                exit(2);
-            }
-        break;
-        default:
-            return node;
-        break;
-    }
-    return node;
+	Node *node = getNode(typeNode);
+	tk = get_token(stream);
+	switch (tk.type) {
+	case STRING:
+		node->value = "STRING";
+		return node;
+	case DOUBLE:
+		node->value = "DOUBLE";
+		return node;
+	case INT:
+		node->value = "INT";
+		return node;
+	case BOOLEAN:
+		node->value = "BOOLEAN";
+		return node;
+	default:
+		end(2);
+	}
 }
 
-Node * cinf()
+Node * rettypeN(FILE *stream)
 {
-    Node *node = getNode(cinfNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == IN)
-    {
-            destroyToken(tk); tk = getNextToken();
-            if(getTokenType(tk) == ID)
-            {
-                node->link1 = id();
-                node->link2 = mcinf();
-                return node;
-            } else exit(2);
-        } else exit(2);
+	Node *node = getNode(rettypeNode);
+	tk = get_token(stream);
+	switch (tk.type) {
+	case STRING:
+		node->value = "STRING";
+		return node;
+	case INT:
+		node->value = "INT";
+		return node;
+	case DOUBLE:
+		node->value = "DOUBLE";
+		return node;
+	case BOOLEAN:
+		node->value = "DOUBLE";
+		return node;
+	case VOID:
+		node->value = "DOUBLE";
+		return node;
+	default:
+		end(2);
+	}
 }
 
-Node * mcinf()
+Node * varN(FILE *stream)
 {
-    Node *node = getNode(mcinfNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == IN)
-    {
-            destroyToken(tk); tk = getNextToken();
-            if(getTokenType(tk) == ID)
-            {
-                node->link1 = id();
-                node->link2 = mcinf();
-                return node;
-            } else exit(2);
-    }
-    else if(getTokenType(tk) == SEMICLN)
-    {
-        destroyToken(tk); tk = getNextToken();
-        return node;
-    }
-    else exit(2);
+	Node *node = getNode(varNode);
+	node->link1 = typeN(stream);
+	if ((tk = get_token(stream)).type == IDENTIFIER)
+	{
+		if ((tk = get_token(stream)).type == EQUAL) {
+			node->link2 = exprN(stream);
+		}
+		return node;
+	}
+	else end(2);
 }
 
-Node * coutf()
-{
-    Node *node = getNode(coutfNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == OUT)
-    {
-            destroyToken(tk); tk = getNextToken();
-            node->link1 = expr();
-            node->link2 = mcoutf();
-            return node;
-        } else exit(2);
+Node * blockN(FILE *stream) {
+	Node *node = getNode(blockNode);
+	node->link1 = statN(stream);
+	node->link2 = mstatsN(stream);
+	return node;
 }
 
-Node * mcoutf()
-{
-    Node *node = getNode(mcoutfNode);
-    if(getTokenType(tk) == OUT)
-    {
-            destroyToken(tk); tk = getNextToken();
-            node->link1 = expr();
-            node->link2 = mcoutf();
-            return node;
-    }
-    else if(getTokenType(tk) == SEMICLN)
-    {
-        destroyToken(tk); tk = getNextToken();
-        return node;
-    }
-    else exit(2);
+Node * mstatsN(FILE *stream) {
+	Node *node = getNode(mstatsNode);
+	node->link1 = statN(stream);
+	node->link2 = mstatsN(stream);
+	return node;
 }
 
-Node * iff()
+Node * assign(FILE *stream)
 {
-    Node *node = getNode(iffNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == LEFT_BRACKET)
-    {
-        node->link1 = ro();
-    } else 
-    {
-        exit(2);
-    }
-    if(getTokenType(tk) == RIGHT_BRACKET)
-    {
-        node->link2 = elsef();
-        destroyToken(tk); tk = getNextToken();
-        return node;
-    } else 
-    {
-        exit(2);
-    }
+	Node *node = getNode(assignNode);
+	if (getTokenType(tk) == ASSIGNMENT)
+	{
+		 tk = getNextToken();
+		node->link1 = expr();
+	}
+	else end(2);
+	return node;
 }
 
-Node * whilef()
+Node * stats(FILE *stream)
 {
-    Node *node = getNode(whilefNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == LEFT_BRACKET)
-    {
-        node->link1 = ro();
-    }
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == RIGHT_BRACKET)
-    {
-        destroyToken(tk); tk = getNextToken();
-        if(getTokenType(tk) == LEFT_CURLY_BRACKET)
-        {
-            node->link1 = block();
-        }
-        destroyToken(tk); tk = getNextToken();
-        if(getTokenType(tk) == RIGHT_CURLY_BRACKET)
-        {
-            return node;
-        } else exit(2);
-    } else exit(2);
+	Node *node = getNode(statsNode);
+	node->link1 = stat();
+	if (getTokenType(tk) == RIGHT_CURLY_BRACKET) {
+		return node;
+	}
+	else
+	{
+		node->link2 = mstats();
+	}
+	return node;
 }
 
-Node * forf()
+Node * mstats(FILE *stream)
 {
-    Node *node = getNode(forfNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == LEFT_BRACKET)
-    {
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = for1();
-    } else exit(2);
-    node->link2 = for2();
-    return node;
-}
-Node * for1()
-{
-    Node *node = getNode(for1Node);
-    node->link2 = forvar();
-    if(getTokenType(tk) == SEMICLN)
-    {
-        node->link1 = ro();
-        if(getTokenType(tk) == SEMICLN)
-        {
-            return node;
-        } else exit(2);
-    } else exit(2);
+	Node *node = getNode(mstatsNode);
+	node->link1 = stat();
+	if (getTokenType(tk) == RIGHT_CURLY_BRACKET) {
+		return node;
+	}
+	else
+	{
+		node->link2 = mstats();
+	}
+	return node;
 }
 
-Node * for2()
+Node * stat(FILE *stream)
 {
-    Node *node = getNode(for2Node);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == ID)
-    {
-        node->value = tk->attr;
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = assign();
-        if(getTokenType(tk) == RIGHT_BRACKET)
-        {
-            destroyToken(tk); tk = getNextToken();
-            if(getTokenType(tk) == LEFT_CURLY_BRACKET)
-            {
-                destroyToken(tk); tk = getNextToken();
-                node->link2 = block();
-                if(getTokenType(tk) == RIGHT_CURLY_BRACKET)
-                {
-                    destroyToken(tk); tk = getNextToken();
-                    return node;
-                } else exit(2);
-            } else exit(2);
-        } else exit(2);
-    } else exit(2);
+	Node *node = getNode(statNode);
+	switch (getTokenType(tk)) {
+	case CIN:
+		node->value->str = "CIN";
+		node->link1 = cinf();
+		break;
+	case COUT:
+		node->value->str = "COUT";
+		node->link1 = coutf();
+		break;
+	case IF:
+		node->value->str = "IF";
+		node->link1 = iff();
+		break;
+	case WHILE:
+		node->value->str = "WHILE";
+		node->link1 = whilef();
+		break;
+	case FOR:
+		node->value->str = "FOR";
+		node->link1 = forf();
+		break;
+	case ID:
+		node->value = tk->attr;
+		if (getTokenType(tk) == LEFT_BRACKET)
+		{
+			node->link1 = rvar();
+			if (getTokenType(tk) == RIGHT_BRACKET) {
+				 tk = getNextToken();
+			}
+			else {
+				end(2);
+			}
+		}
+		else
+		{
+			 tk = getNextToken();
+			node->link1 = assign();
+		}
+		if (getTokenType(tk) == SEMICLN) {
+			 tk = getNextToken();
+		}
+		else {
+			end(2);
+		}
+		break;
+	case RETURN:
+		node->value->str = "RETURN";
+		//Return expression
+		 tk = getNextToken();
+		node->link1 = expr();
+		//SEMICLN check
+		if (getTokenType(tk) == SEMICLN) {
+			 tk = getNextToken();
+		}
+		else {
+			end(2);
+		}
+		break;
+	default:
+		return node;
+		break;
+	}
+	return node;
 }
 
-Node * forvar()
+Node * iff(FILE *stream)
 {
-    Node *node = getNode(forvarNode);
-    node->link1 = type();
-    if(getTokenType(tk) == ID)
-    {
-        node->value = tk->attr;
-        destroyToken(tk); tk = getNextToken();
-        if(getTokenType(tk) == ASSIGNMENT)
-        {
-            node->link2 = assign();
-        }
-    } else exit(2);
-    return node;
+	Node *node = getNode(iffNode);
+	 tk = getNextToken();
+	if (getTokenType(tk) == LEFT_BRACKET)
+	{
+		node->link1 = ro();
+	}
+	else
+	{
+		end(2);
+	}
+	if (getTokenType(tk) == RIGHT_BRACKET)
+	{
+		node->link2 = elsef();
+		 tk = getNextToken();
+		return node;
+	}
+	else
+	{
+		end(2);
+	}
 }
 
-Node * expr()
+Node * whilef(FILE *stream)
 {
-    Node *node = getNode(exprNode);
-    node->link1 = as();
-    if(getTokenType(tk) != SEMICLN)
-    {
-        if(getTokenType(tk) == ADD)
-        {
-            node->value->str = "ADDITION";
-            destroyToken(tk); tk = getNextToken();
-            node->link2 = expr();
-        }
-        else
-        if(getTokenType(tk) == SUB)
-        {
-            node->value->str = "SUBTRACTION";
-            destroyToken(tk); tk = getNextToken();
-            node->link2 = expr();
-        }
-        return node;
-    } else return node;
+	Node *node = getNode(whilefNode);
+	 tk = getNextToken();
+	if (getTokenType(tk) == LEFT_BRACKET)
+	{
+		node->link1 = ro();
+	}
+	 tk = getNextToken();
+	if (getTokenType(tk) == RIGHT_BRACKET)
+	{
+		 tk = getNextToken();
+		if (getTokenType(tk) == LEFT_CURLY_BRACKET)
+		{
+			node->link1 = block();
+		}
+		 tk = getNextToken();
+		if (getTokenType(tk) == RIGHT_CURLY_BRACKET)
+		{
+			return node;
+		}
+		else end(2);
+	}
+	else end(2);
 }
 
-Node * as()
+Node * forf(FILE *stream)
 {
-    Node *node = getNode(asNode);
-    if(getTokenType(tk) == LEFT_BRACKET)
-    {
-        node->value->str = "BRACKET";
-        destroyToken(tk); tk = getNextToken();
-        node->link2 = expr();
-        return node;
-    }
-    else
-    {
-        node->link1 = s();
-    }
-    if(getTokenType(tk) == MULTIPLICATION)
-    {
-        node->value->str = "MULTIPLICATION";
-        destroyToken(tk); tk = getNextToken();
-        node->link2 = as();
-    }
-    else
-    if(getTokenType(tk) == DIVISION)
-    {
-        printf("div\n");
-        node->value->str = "DIVISION";
-        destroyToken(tk); tk = getNextToken();
-        node->link2 = as();
-    }
-    return node;
+	Node *node = getNode(forfNode);
+	 tk = getNextToken();
+	if (getTokenType(tk) == LEFT_BRACKET)
+	{
+		 tk = getNextToken();
+		node->link1 = for1();
+	}
+	else end(2);
+	node->link2 = for2();
+	return node;
 }
 
-Node * s()
+Node * for1(FILE *stream)
 {
-    Node *node = getNode(sNode);
-    if(getTokenType(tk) == SUB)
-    {
-        node->value->str = "MINUS";
-        node->link1 = s();
-        destroyToken(tk); tk = getNextToken();
-    }
-    else 
-    {
-        node->value->str = "PLUS";
-        node->link1 = v();
-    }
-    return node;
+	Node *node = getNode(for1Node);
+	node->link2 = forvar();
+	if (getTokenType(tk) == SEMICLN)
+	{
+		node->link1 = ro();
+		if (getTokenType(tk) == SEMICLN)
+		{
+			return node;
+		}
+		else end(2);
+	}
+	else end(2);
 }
 
-Node * v()
+Node * for2(FILE *stream)
 {
-    Node *node = getNode(vNode);
-    switch(getTokenType(tk)) {
-        case LEFT_BRACKET:
-            node->link1 = expr();
-            if (getTokenType(tk) == RIGHT_BRACKET) {
-                destroyToken(tk); tk = getNextToken();
-                return node;
-            } else {
-                exit(2);
-            }
-        case ID:
-            node->link1 = id();
-            destroyToken(tk); tk = getNextToken();
-            if(getTokenType(tk)==LEFT_BRACKET)
-            {
-                node->link2 = rvar();
-                destroyToken(tk); tk = getNextToken();
-                if (getTokenType(tk) == RIGHT_BRACKET) {
-                    return node;
-                } else {
-                    exit(2);
-                }
-            } else{
-                return node;
-            }
-            break;
-        case INT:
-            node->link1 = intf();
-            break;
-        case DBL:
-            node->link1 = doublef();
-            break;
-        case STRING_LITERAL:
-            node->link1 = stringf();
-            break;
-        default:
-            exit(2);
-    }
-    return node;
+	Node *node = getNode(for2Node);
+	 tk = getNextToken();
+	if (getTokenType(tk) == ID)
+	{
+		node->value = tk->attr;
+		 tk = getNextToken();
+		node->link1 = assign();
+		if (getTokenType(tk) == RIGHT_BRACKET)
+		{
+			 tk = getNextToken();
+			if (getTokenType(tk) == LEFT_CURLY_BRACKET)
+			{
+				 tk = getNextToken();
+				node->link2 = block();
+				if (getTokenType(tk) == RIGHT_CURLY_BRACKET)
+				{
+					 tk = getNextToken();
+					return node;
+				}
+				else end(2);
+			}
+			else end(2);
+		}
+		else end(2);
+	}
+	else end(2);
 }
 
-Node * ro()
+Node * forvar(FILE *stream)
 {
-    Node *node = getNode(roNode);
-    destroyToken(tk); tk = getNextToken();
-    node->link1 = expr();
-    switch(getTokenType(tk)) {
-        case LSS:
-            node->value->str = "LSS";
-            break;
-        case GTR:
-            node->value->str = "GTR";
-            break;
-        case LESS_OR_EQUAL:
-            node->value->str = "LESS_OR_EQUAL";
-            break;
-        case GREATER_OR_EQUAL:
-            node->value->str = "GREATER_OR_EQUAL";
-            break;
-        case EQUAL:
-            node->value->str = "EQUAL";
-            break;
-        case NOT_EQUAL:
-            node->value->str = "NOT_EQUAL";
-            break;
-        default:
-            exit(2);
-    }
-    destroyToken(tk); tk = getNextToken();
-    node->link2 = expr();
-    return node;
+	Node *node = getNode(forvarNode);
+	node->link1 = type();
+	if (getTokenType(tk) == ID)
+	{
+		node->value = tk->attr;
+		 tk = getNextToken();
+		if (getTokenType(tk) == ASSIGNMENT)
+		{
+			node->link2 = assign();
+		}
+	}
+	else end(2);
+	return node;
 }
 
-Node * elsef()
+Node * expr(FILE *stream)
 {
-    Node *node = getNode(elseNode);
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == LEFT_CURLY_BRACKET)
-    {
-        destroyToken(tk); tk = getNextToken();
-        node->link1 = block();
-        if(getTokenType(tk) == RIGHT_CURLY_BRACKET)
-        {
-            destroyToken(tk); tk = getNextToken();
-            if(getTokenType(tk) == ELSE)
-            {
-                destroyToken(tk); tk = getNextToken();
-                if(getTokenType(tk) == LEFT_CURLY_BRACKET)
-                {
-                    destroyToken(tk); tk = getNextToken();
-                    node->link2 = block();
-                    if(getTokenType(tk) == RIGHT_CURLY_BRACKET)
-                    {
-                         return node;
-                    } else exit(2);
-                } else exit(2);
-            } else return node;
-        } else exit(2);
-    } else exit(2);
+	Node *node = getNode(exprNode);
+	node->link1 = as();
+	if (getTokenType(tk) != SEMICLN)
+	{
+		if (getTokenType(tk) == ADD)
+		{
+			node->value->str = "ADDITION";
+			 tk = getNextToken();
+			node->link2 = expr();
+		}
+		else
+			if (getTokenType(tk) == SUB)
+			{
+				node->value->str = "SUBTRACTION";
+				 tk = getNextToken();
+				node->link2 = expr();
+			}
+		return node;
+	}
+	else return node;
 }
 
-Node * id()
+Node * as(FILE *stream)
 {
-    Node *node = getNode(idNode);
-    node->value = tk->attr;
-    return node;
+	Node *node = getNode(asNode);
+	if (getTokenType(tk) == LEFT_BRACKET)
+	{
+		node->value->str = "BRACKET";
+		 tk = getNextToken();
+		node->link2 = expr();
+		return node;
+	}
+	else
+	{
+		node->link1 = s();
+	}
+	if (getTokenType(tk) == MULTIPLICATION)
+	{
+		node->value->str = "MULTIPLICATION";
+		 tk = getNextToken();
+		node->link2 = as();
+	}
+	else
+		if (getTokenType(tk) == DIVISION)
+		{
+			printf("div\n");
+			node->value->str = "DIVISION";
+			 tk = getNextToken();
+			node->link2 = as();
+		}
+	return node;
 }
 
-Node * fvar()
+Node * s(FILE *stream)
 {
-    Node *node = getNode(fvarNode);
-    destroyToken(tk); tk = getNextToken();
-    node->link1 = rettype();
-    if(getTokenType(tk) == ID)
-    {
-        node->value = tk->attr;
-        destroyToken(tk); tk = getNextToken();
-        if(getTokenType(tk) == COMMA)
-        {
-            node->link2 = rvar();
-        }
-        else
-        {
-            return node;
-        }
-    }
-    return node;
+	Node *node = getNode(sNode);
+	if (getTokenType(tk) == SUB)
+	{
+		node->value->str = "MINUS";
+		node->link1 = s();
+		 tk = getNextToken();
+	}
+	else
+	{
+		node->value->str = "PLUS";
+		node->link1 = v();
+	}
+	return node;
 }
 
-Node * rvar()
+Node * v(FILE *stream)
 {
-    Node *node = getNode(rvarNode);
-    if(getTokenType(tk) != RIGHT_BRACKET)
-    {
-        node->link1 = expr();
-        if(getTokenType(tk) == COMMA)
-        {
-            node->link2 = rvar();
-        }
-        else
-        {
-            exit(2);
-        }
-    }
-    return node;
+	Node *node = getNode(vNode);
+	switch (getTokenType(tk)) {
+	case LEFT_BRACKET:
+		node->link1 = expr();
+		if (getTokenType(tk) == RIGHT_BRACKET) {
+			 tk = getNextToken();
+			return node;
+		}
+		else {
+			end(2);
+		}
+	case ID:
+		node->link1 = id();
+		 tk = getNextToken();
+		if (getTokenType(tk) == LEFT_BRACKET)
+		{
+			node->link2 = rvar();
+			 tk = getNextToken();
+			if (getTokenType(tk) == RIGHT_BRACKET) {
+				return node;
+			}
+			else {
+				end(2);
+			}
+		}
+		else {
+			return node;
+		}
+		break;
+	case INT:
+		node->link1 = intf();
+		break;
+	case DBL:
+		node->link1 = doublef();
+		break;
+	case STRING_LITERAL:
+		node->link1 = stringf();
+		break;
+	default:
+		end(2);
+	}
+	return node;
 }
 
-Node * intf()
+Node * ro(FILE *stream)
 {
-    Node *node = getNode(intNode);
-    node->value = tk->attr;
-    destroyToken(tk); tk = getNextToken();
-    return node;
+	Node *node = getNode(roNode);
+	 tk = getNextToken();
+	node->link1 = expr();
+	switch (getTokenType(tk)) {
+	case LSS:
+		node->value->str = "LSS";
+		break;
+	case GTR:
+		node->value->str = "GTR";
+		break;
+	case LESS_OR_EQUAL:
+		node->value->str = "LESS_OR_EQUAL";
+		break;
+	case GREATER_OR_EQUAL:
+		node->value->str = "GREATER_OR_EQUAL";
+		break;
+	case EQUAL:
+		node->value->str = "EQUAL";
+		break;
+	case NOT_EQUAL:
+		node->value->str = "NOT_EQUAL";
+		break;
+	default:
+		end(2);
+	}
+	 tk = getNextToken();
+	node->link2 = expr();
+	return node;
 }
 
-Node * stringf()
+Node * elsef(FILE *stream)
 {
-    Node *node = getNode(stringNode);
-    node->value = tk->attr;
-    destroyToken(tk); tk = getNextToken();
-    if(getTokenType(tk) == SEMICLN)
-    {
-        return node;
-    }else
-    {
-        exit(2);
-    }
+	Node *node = getNode(elseNode);
+	 tk = getNextToken();
+	if (getTokenType(tk) == LEFT_CURLY_BRACKET)
+	{
+		 tk = getNextToken();
+		node->link1 = block();
+		if (getTokenType(tk) == RIGHT_CURLY_BRACKET)
+		{
+			 tk = getNextToken();
+			if (getTokenType(tk) == ELSE)
+			{
+				 tk = getNextToken();
+				if (getTokenType(tk) == LEFT_CURLY_BRACKET)
+				{
+					 tk = getNextToken();
+					node->link2 = block();
+					if (getTokenType(tk) == RIGHT_CURLY_BRACKET)
+					{
+						return node;
+					}
+					else end(2);
+				}
+				else end(2);
+			}
+			else return node;
+		}
+		else end(2);
+	}
+	else end(2);
 }
 
-Node * doublef()
+Node * id(FILE *stream)
 {
-    Node *node = getNode(doubleNode);
-    node->value = tk->attr;
-    destroyToken(tk); tk = getNextToken();
-    return node;
+	Node *node = getNode(idNode);
+	node->value = tk->attr;
+	return node;
 }
 
-Node * autof()
+Node * fvar(FILE *stream)
 {
-    Node *node = getNode(autoNode);
-    node->value = tk->attr;
-    destroyToken(tk); tk = getNextToken();
-    return node;
+	Node *node = getNode(fvarNode);
+	 tk = getNextToken();
+	node->link1 = rettype();
+	if (getTokenType(tk) == ID)
+	{
+		node->value = tk->attr;
+		 tk = getNextToken();
+		if (getTokenType(tk) == COMMA)
+		{
+			node->link2 = rvar();
+		}
+		else
+		{
+			return node;
+		}
+	}
+	return node;
 }
 
-int main(int argc, char* argv[])
+Node * rvar(FILE *stream)
 {
-    printf("%s\n", argv[0]);
-    if (argc == 2)
-    {
-        printf("%s\n", argv[0]);
-        root = parser(argv[1]);
-        disposeTree(root);
-    }else exit(1);
+	Node *node = getNode(rvarNode);
+	if (getTokenType(tk) != RIGHT_BRACKET)
+	{
+		node->link1 = expr();
+		if (getTokenType(tk) == COMMA)
+		{
+			node->link2 = rvar();
+		}
+		else
+		{
+			end(2);
+		}
+	}
+	return node;
+}
+
+Node * intf(FILE *stream)
+{
+	Node *node = getNode(intNode);
+	node->value = tk->attr;
+	 tk = getNextToken();
+	return node;
+}
+
+Node * stringf(FILE *stream)
+{
+	Node *node = getNode(stringNode);
+	node->value = tk->attr;
+	 tk = getNextToken();
+	if (getTokenType(tk) == SEMICLN)
+	{
+		return node;
+	}
+	else
+	{
+		end(2);
+	}
+}
+
+Node * doublef(FILE *stream)
+{
+	Node *node = getNode(doubleNode);
+	node->value = tk->attr;
+	 tk = getNextToken();
+	return node;
+}
+
+Node * autof(FILE *stream)
+{
+	Node *node = getNode(autoNode);
+	node->value = tk->attr;
+	 tk = getNextToken();
+	return node;
 }
